@@ -1,0 +1,13 @@
+flocking:
+  ros__parameters:
+    wheel_turning:
+      hard_turn_on_angle_threshold: 90.0   # in radians, threshold to trigger a hard turn
+      soft_turn_on_angle_threshold: 70.0  # in radians, threshold to switch to soft turning
+      no_turn_angle_threshold: 10.0        # in radians, threshold below which no turning is needed
+      max_speed: 10.0                      # maximum wheel speed
+    flocking:
+      target_distance: 75.0                # preferred distance between robots
+      gain: 1000.0                         # gain for the Lennard-Jones potential
+      exponent: 2.0                     # exponent for the Lennard-Jones potential
+    wheel_separation: 0.160                 # distance between wheels for differential drive kinematics
+    wheel_radius: 0.033                     # radius of the wheels
