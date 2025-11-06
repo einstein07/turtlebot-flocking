@@ -110,8 +110,8 @@ FlockingController::FlockingController(std::shared_ptr<rclcpp::Node> node)
     ns_prefix.clear();
   }
 
-  std::string default_lidar_topic = ns_prefix + "/lidarList";
-  std::string default_odom_topic = ns_prefix + "/position";
+  std::string default_lidar_topic = ns_prefix + "/scan";
+  std::string default_odom_topic = ns_prefix + "/odom";
   node_->declare_parameter("lidar_topic", default_lidar_topic);
   node_->declare_parameter("odom_topic", default_odom_topic);
 
@@ -120,12 +120,18 @@ FlockingController::FlockingController(std::shared_ptr<rclcpp::Node> node)
   node_->get_parameter("lidar_topic", lidar_topic);
   node_->get_parameter("odom_topic", odom_topic);
 
-  lidar_sub_ = node_->create_subscription<argos3_ros2_bridge::msg::LidarList>(
+  // Legacy ARGoS-specific LiDAR subscription retained for reference:
+  // lidar_sub_ = node_->create_subscription<argos3_ros2_bridge::msg::LidarList>(
+  //   lidar_topic,
+  //   rclcpp::SensorDataQoS(),
+  //   std::bind(&FlockingController::lidar_sensor_callback, this, _1));
+
+  scan_sub_ = node_->create_subscription<sensor_msgs::msg::LaserScan>(
     lidar_topic,
     rclcpp::SensorDataQoS(),
     std::bind(&FlockingController::lidar_sensor_callback, this, _1));
 
-  odom_sub_ = node_->create_subscription<argos3_ros2_bridge::msg::Position>(
+  odom_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
     odom_topic,
     rclcpp::SystemDefaultsQoS(),
     std::bind(&FlockingController::odom_callback, this, _1));
@@ -139,12 +145,17 @@ FlockingController::FlockingController(std::shared_ptr<rclcpp::Node> node)
 /*         Sensor Callbacks             */
 /****************************************/
 
-void FlockingController::lidar_sensor_callback(const argos3_ros2_bridge::msg::LidarList & msg) {
-  current_lidar_msg_ = msg;
+// void FlockingController::lidar_sensor_callback(const argos3_ros2_bridge::msg::LidarList & msg) {
+//   current_lidar_msg_ = msg;
+//   initialized_ = true;
+// }
+
+void FlockingController::lidar_sensor_callback(const sensor_msgs::msg::LaserScan & msg) {
+  current_scan_ = msg;
   initialized_ = true;
 }
 
-void FlockingController::odom_callback(const argos3_ros2_bridge::msg::Position & msg) {
+void FlockingController::odom_callback(const nav_msgs::msg::Odometry & msg) {
   current_odom_ = msg;
   have_pose_ = true;
 }
@@ -156,7 +167,7 @@ void FlockingController::odom_callback(const argos3_ros2_bridge::msg::Position &
 void FlockingController::timer_callback() {
   if (!printed_) {
     auto domain_id = node_->get_node_base_interface()->get_context()->get_domain_id();
-    RCLCPP_INFO(node_->get_logger(), "Controller running on ROS_DOMAIN_ID: %u", domain_id);
+    RCLCPP_INFO(node_->get_logger(), "Controller running on ROS_DOMAIN_ID: %zu", domain_id);
     printed_ = true;
   }
 
@@ -181,8 +192,8 @@ Vector2 FlockingController::vectorToGoal() const {
   }
 
   Vector2 robot_position(
-    current_odom_.position.x,
-    current_odom_.position.y);
+    current_odom_.pose.pose.position.x,
+    current_odom_.pose.pose.position.y);
 
   Vector2 to_goal(goal_position_.x - robot_position.x,
                   goal_position_.y - robot_position.y);
@@ -191,7 +202,7 @@ Vector2 FlockingController::vectorToGoal() const {
     return Vector2(0.0, 0.0);
   }
 
-  double yaw = quaternionToYaw(current_odom_.orientation);
+  double yaw = quaternionToYaw(current_odom_.pose.pose.orientation);
   Vector2 goal_in_base = rotateWorldToBase(to_goal.normalized(), yaw);
 
   double speed = std::min(goal_gain_ * distance, wheel_params_.max_speed);
@@ -199,24 +210,34 @@ Vector2 FlockingController::vectorToGoal() const {
 }
 
 Vector2 FlockingController::lidarFlockingVector() const {
-  if (current_lidar_msg_.lidars.empty()) {
+  if (current_scan_.ranges.empty()) {
     return Vector2(0.0, 0.0);
   }
 
   Vector2 accum(0.0, 0.0);
   int count = 0;
-  for (const auto & reading : current_lidar_msg_.lidars) {
-    double distance = reading.value;
-    if (distance <= 0.0 || distance > flocking_params_.interaction_cutoff) {
+  double angle = current_scan_.angle_min;
+  for (const auto & range : current_scan_.ranges) {
+    double distance = range;
+    if (!std::isfinite(distance)) {
+      angle += current_scan_.angle_increment;
+      continue;
+    }
+    if (distance < current_scan_.range_min) {
+      distance = current_scan_.range_min;
+    }
+    if (distance <= 0.0 || distance > flocking_params_.interaction_cutoff || distance > current_scan_.range_max) {
+      angle += current_scan_.angle_increment;
       continue;
     }
     if (distance < 1e-3) {
       distance = 1e-3;
     }
     double lj = flocking_params_.generalizedLennardJones(distance);
-    accum += Vector2(lj * std::cos(reading.angle),
-                     lj * std::sin(reading.angle));
+    accum += Vector2(lj * std::cos(angle),
+                     lj * std::sin(angle));
     ++count;
+    angle += current_scan_.angle_increment;
   }
 
   if (count == 0) {

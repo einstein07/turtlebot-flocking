@@ -10,8 +10,9 @@
 #include <vector>
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
-#include "argos3_ros2_bridge/msg/position.hpp"
-#include "argos3_ros2_bridge/msg/lidar_list.hpp"
+#include <nav_msgs/msg/odometry.hpp>
+#include <sensor_msgs/msg/laser_scan.hpp>
+// #include "argos3_ros2_bridge/msg/lidar_list.hpp"
 
 namespace turtlebot_flocking
 {
@@ -106,22 +107,22 @@ private:
 
   // Timer callback for the control loop.
   void timer_callback();
-  void lidar_sensor_callback(const argos3_ros2_bridge::msg::LidarList & msg);
-  void odom_callback(const argos3_ros2_bridge::msg::Position & msg);
+  void lidar_sensor_callback(const sensor_msgs::msg::LaserScan & msg);
+  void odom_callback(const nav_msgs::msg::Odometry & msg);
 
   Vector2 vectorToGoal() const;
   Vector2 lidarFlockingVector() const;
   void setWheelSpeedsFromVector(const Vector2 & heading);
 
   // Subscribers and publisher.
-  rclcpp::Subscription<argos3_ros2_bridge::msg::LidarList>::SharedPtr lidar_sub_;
-  rclcpp::Subscription<argos3_ros2_bridge::msg::Position>::SharedPtr odom_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 
   // Latest sensor data.
-  argos3_ros2_bridge::msg::LidarList current_lidar_msg_;
-  argos3_ros2_bridge::msg::Position current_odom_;
+  sensor_msgs::msg::LaserScan current_scan_;
+  nav_msgs::msg::Odometry current_odom_;
 
   // Goal configuration.
   Vector2 goal_position_;

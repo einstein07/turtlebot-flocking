@@ -1,9 +1,9 @@
 flocking:
   ros__parameters:
     wheel_turning:
-      hard_turn_on_angle_threshold: 90.0   # in radians, threshold to trigger a hard turn
-      soft_turn_on_angle_threshold: 70.0  # in radians, threshold to switch to soft turning
-      no_turn_angle_threshold: 10.0        # in radians, threshold below which no turning is needed
+      hard_turn_on_angle_threshold: 90.0   # in degrees, threshold to trigger a hard turn
+      soft_turn_on_angle_threshold: 70.0  # in degrees, threshold to switch to soft turning
+      no_turn_angle_threshold: 10.0        # in degrees ians, threshold below which no turning is needed
       max_speed: 10.0                      # maximum wheel speed
     flocking:
       target_distance: 75.0                # preferred distance between robots

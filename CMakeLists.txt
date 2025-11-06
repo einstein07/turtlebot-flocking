@@ -11,7 +11,7 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
-find_package(argos3_ros2_bridge REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 
 if(BUILD_TESTING)
@@ -38,7 +38,7 @@ ament_target_dependencies(turtlebot_flocking
   std_msgs
   geometry_msgs
   nav_msgs
-  argos3_ros2_bridge
+  sensor_msgs
 )
 
 target_link_libraries(turtlebot_flocking
