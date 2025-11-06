@@ -6,7 +6,6 @@
 #ifndef TURTLEBOT_FLOCKING_FLOCKING_H_
 #define TURTLEBOT_FLOCKING_FLOCKING_H_
 #include <cmath>
-#include <map>
 #include <string>
 #include <vector>
 #include <rclcpp/rclcpp.hpp>
@@ -85,7 +84,7 @@ struct FlockingInteractionParams {
   : target_distance(1.0),
     gain(1.0),
     exponent(2.0),
-    interaction_cutoff(1.8) {}
+    interaction_cutoff(0.3) {}
 
   void load_from_parameters(std::shared_ptr<rclcpp::Node> node);
   double generalizedLennardJones(double distance) const;

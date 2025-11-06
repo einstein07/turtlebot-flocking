@@ -57,8 +57,8 @@ Parameters can be supplied via YAML (see `config/config.yaml`) or set on the nod
 |                     | `wheel_radius` (m)                     | Wheel radius.                                                                                        | `0.029112741`    |
 |                     | `goal.x`, `goal.y` (m)                 | Target point in the world frame.                                                                     | `0.0`, `0.0`     |
 |                     | `goal.gain`                            | Linear gain toward the goal. Clamped to non-negative values.                                         | `1.0`            |
-|                     | `lidar_topic`                          | Topic name for `sensor_msgs/msg/LaserScan`. Defaults to `<namespace>/scan`.                          | derived          |
-|                     | `odom_topic`                           | Topic name for `nav_msgs/msg/Odometry`. Defaults to `<namespace>/odom`.                              | derived          |
+|                     | `lidar_topic`                          | Optional LaserScan topic override; if unset, `<namespace>/scan` is used.                             | derived          |
+|                     | `odom_topic`                           | Optional Odometry topic override; if unset, `<namespace>/odom` is used.                              | derived          |
 
 ## Running the Simulation
 

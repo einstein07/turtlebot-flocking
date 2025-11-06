@@ -11,3 +11,6 @@ flocking:
       exponent: 2.0                        # exponent for the Lennard-Jones potential
     wheel_separation: 0.160                 # distance between wheels for differential drive kinematics
     wheel_radius: 0.033                     # radius of the wheels
+    goal.x: 0.0                             # goal position x-coordinate in metres
+    goal.y: 10.0                            # goal position y-coordinate in metres
+    goal.gain: 1000.0                       # attraction gain toward the goal
