@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <map>
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
@@ -15,37 +16,65 @@ namespace turtlebot_flocking
 /*    Parameter Loading Functions       */
 /****************************************/
 
-void WheelTurningParams::load_from_parameters(std::shared_ptr<rclcpp::Node> node, const std::string & ns) {
-  node->declare_parameter(ns + ".hard_turn_on_angle_threshold", hard_turn_on_angle_threshold);
-  node->declare_parameter(ns + ".soft_turn_on_angle_threshold", soft_turn_on_angle_threshold);
-  node->declare_parameter(ns + ".no_turn_angle_threshold", no_turn_angle_threshold);
-  node->declare_parameter(ns + ".max_speed", max_speed);
+void WheelTurningParams::load_from_parameters(std::shared_ptr<rclcpp::Node> node) {
+  auto rad_to_deg = [](double radians) {
+    return radians * 180.0 / M_PI;
+  };
+  auto deg_to_rad = [](double degrees) {
+    return degrees * M_PI / 180.0;
+  };
 
-  node->get_parameter(ns + ".hard_turn_on_angle_threshold", hard_turn_on_angle_threshold);
-  hard_turn_on_angle_threshold = hard_turn_on_angle_threshold * M_PI / 180.0;
-  node->get_parameter(ns + ".soft_turn_on_angle_threshold", soft_turn_on_angle_threshold);
-  soft_turn_on_angle_threshold = soft_turn_on_angle_threshold * M_PI / 180.0;
-  node->get_parameter(ns + ".no_turn_angle_threshold", no_turn_angle_threshold);
-  no_turn_angle_threshold = no_turn_angle_threshold * M_PI / 180.0;
-  node->get_parameter(ns + ".max_speed", max_speed);
+  std::map<std::string, rclcpp::ParameterValue> defaults{
+    {"hard_turn_on_angle_threshold", rclcpp::ParameterValue(rad_to_deg(hard_turn_on_angle_threshold))},
+    {"soft_turn_on_angle_threshold", rclcpp::ParameterValue(rad_to_deg(soft_turn_on_angle_threshold))},
+    {"no_turn_angle_threshold", rclcpp::ParameterValue(rad_to_deg(no_turn_angle_threshold))},
+    {"max_speed", rclcpp::ParameterValue(max_speed)}
+  };
+
+  node->declare_parameters("wheel_turning", defaults);
+
+  double hard_turn_deg = rad_to_deg(hard_turn_on_angle_threshold);
+  double soft_turn_deg = rad_to_deg(soft_turn_on_angle_threshold);
+  double no_turn_deg = rad_to_deg(no_turn_angle_threshold);
+  double max_speed_param = max_speed;
+
+  node->get_parameter("wheel_turning.hard_turn_on_angle_threshold", hard_turn_deg);
+  node->get_parameter("wheel_turning.soft_turn_on_angle_threshold", soft_turn_deg);
+  node->get_parameter("wheel_turning.no_turn_angle_threshold", no_turn_deg);
+  node->get_parameter("wheel_turning.max_speed", max_speed_param);
+
+  hard_turn_on_angle_threshold = deg_to_rad(hard_turn_deg);
+  soft_turn_on_angle_threshold = deg_to_rad(soft_turn_deg);
+  no_turn_angle_threshold = deg_to_rad(no_turn_deg);
+  max_speed = max_speed_param;
 
   turning_mechanism = TurningMechanism::NO_TURN;
 }
 
-void FlockingInteractionParams::load_from_parameters(std::shared_ptr<rclcpp::Node> node, const std::string & ns) {
-  node->declare_parameter(ns + ".target_distance", target_distance);
-  node->declare_parameter(ns + ".gain", gain);
-  node->declare_parameter(ns + ".exponent", exponent);
+void FlockingInteractionParams::load_from_parameters(std::shared_ptr<rclcpp::Node> node) {
+  const double default_ratio = interaction_cutoff / target_distance;
 
-  node->get_parameter(ns + ".target_distance", target_distance);
-  node->get_parameter(ns + ".gain", gain);
-  node->get_parameter(ns + ".exponent", exponent);
+  std::map<std::string, rclcpp::ParameterValue> defaults{
+    {"target_distance", rclcpp::ParameterValue(target_distance)},
+    {"gain", rclcpp::ParameterValue(gain)},
+    {"exponent", rclcpp::ParameterValue(exponent)},
+    {"interaction_range", rclcpp::ParameterValue(interaction_cutoff)}
+  };
 
-  double default_range = interaction_cutoff * target_distance;
-  node->declare_parameter(ns + ".interaction_range", default_range);
-  node->get_parameter(ns + ".interaction_range", interaction_cutoff);
+  node->declare_parameters("flocking", defaults);
+
+  node->get_parameter("flocking.target_distance", target_distance);
+  node->get_parameter("flocking.gain", gain);
+  node->get_parameter("flocking.exponent", exponent);
+
+  if (node->has_parameter("flocking.interaction_range")) {
+    node->get_parameter("flocking.interaction_range", interaction_cutoff);
+  } else {
+    interaction_cutoff = default_ratio * target_distance;
+  }
+
   if (interaction_cutoff <= 0.0) {
-    interaction_cutoff = default_range;
+    interaction_cutoff = default_ratio * target_distance;
   }
 }
 
@@ -86,8 +115,8 @@ FlockingController::FlockingController(std::shared_ptr<rclcpp::Node> node)
   wheel_radius_(0.033),
   printed_(false)
 {
-  wheel_params_.load_from_parameters(node_, "wheel_turning");
-  flocking_params_.load_from_parameters(node_, "flocking");
+  wheel_params_.load_from_parameters(node_);
+  flocking_params_.load_from_parameters(node_);
 
   node_->declare_parameter("wheel_separation", wheel_separation_);
   node_->declare_parameter("wheel_radius", wheel_radius_);

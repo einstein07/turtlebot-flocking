@@ -6,7 +6,7 @@
 
 # The number of robots.  This should match the 'quantity' value in the argos world file (e.g. argos_worlds/demo.argos).
 
-n=20
+n=5
 
 LAUNCH_FILE=/tmp/argos_interface.launch.py
 CONTROLLER_DIR=/home/sindiso/ros2_dev/src/turtlebot_flocking

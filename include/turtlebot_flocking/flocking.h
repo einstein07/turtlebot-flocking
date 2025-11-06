@@ -6,6 +6,7 @@
 #ifndef TURTLEBOT_FLOCKING_FLOCKING_H_
 #define TURTLEBOT_FLOCKING_FLOCKING_H_
 #include <cmath>
+#include <map>
 #include <string>
 #include <vector>
 #include <rclcpp/rclcpp.hpp>
@@ -68,7 +69,7 @@ struct WheelTurningParams {
     no_turn_angle_threshold(0.1),
     max_speed(1.0) {}
 
-  void load_from_parameters(std::shared_ptr<rclcpp::Node> node, const std::string & ns);
+  void load_from_parameters(std::shared_ptr<rclcpp::Node> node);
 };
 
 /*
@@ -86,7 +87,7 @@ struct FlockingInteractionParams {
     exponent(2.0),
     interaction_cutoff(1.8) {}
 
-  void load_from_parameters(std::shared_ptr<rclcpp::Node> node, const std::string & ns);
+  void load_from_parameters(std::shared_ptr<rclcpp::Node> node);
   double generalizedLennardJones(double distance) const;
 };
 
