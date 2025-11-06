@@ -45,20 +45,22 @@ Parameters can be supplied via YAML (see `config/config.yaml`) or set on the nod
 
 | Namespace            | Parameter                              | Description                                                                                          | Default          |
 |---------------------|----------------------------------------|------------------------------------------------------------------------------------------------------|------------------|
-| `wheel_turning`     | `hard_turn_on_angle_threshold` (deg)   | Switch to hard turn above this heading error. Converted to radians internally.                       | `0.5`            |
-|                     | `soft_turn_on_angle_threshold` (deg)   | Switch down to soft turn once heading error drops below this value.                                  | `0.3`            |
-|                     | `no_turn_angle_threshold` (deg)        | Enter straight motion below this error.                                                              | `0.1`            |
-|                     | `max_speed` (rad/s)                    | Wheel speed limit.                                                                                    | `1.0`            |
-| `flocking`          | `target_distance` (m)                  | Preferred inter-robot spacing.                                                                       | `1.0`            |
-|                     | `gain`                                 | Gain on the generalized Lennard–Jones potential.                                                     | `1.0`            |
+| `wheel_turning`     | `hard_turn_on_angle_threshold` (deg)   | Switch to hard turn above this heading error. Converted to radians internally.                       | `90.0`           |
+|                     | `soft_turn_on_angle_threshold` (deg)   | Switch down to soft turn once heading error drops below this value.                                  | `70.0`           |
+|                     | `no_turn_angle_threshold` (deg)        | Enter straight motion below this error.                                                              | `10.0`           |
+|                     | `max_speed` (rad/s)                    | Wheel speed limit.                                                                                    | `10.0`           |
+| `flocking`          | `target_distance` (m)                  | Preferred inter-robot spacing.                                                                       | `0.75`           |
+|                     | `gain`                                 | Gain on the generalized Lennard–Jones potential.                                                     | `1000.0`         |
 |                     | `exponent`                             | Potential exponent.                                                                                  | `2.0`            |
-|                     | `interaction_range` (m)                | Ignore LiDAR readings beyond this distance. Defaults to `interaction_cutoff * target_distance`.      | `1.8`            |
-| (root namespace)    | `wheel_separation` (m)                 | Track width used to convert wheel speeds to `cmd_vel`.                                               | `0.14`           |
-|                     | `wheel_radius` (m)                     | Wheel radius.                                                                                        | `0.029112741`    |
-|                     | `goal.x`, `goal.y` (m)                 | Target point in the world frame.                                                                     | `0.0`, `0.0`     |
-|                     | `goal.gain`                            | Linear gain toward the goal. Clamped to non-negative values.                                         | `1.0`            |
+|                     | `interaction_range` (m)                | Ignore LiDAR readings beyond this distance. Defaults to `interaction_cutoff * target_distance`.      | `1.35`*          |
+| (root namespace)    | `wheel_separation` (m)                 | Track width used to convert wheel speeds to `cmd_vel`.                                               | `0.160`          |
+|                     | `wheel_radius` (m)                     | Wheel radius.                                                                                        | `0.033`          |
+|                     | `goal.x`, `goal.y` (m)                 | Target point in the world frame.                                                                     | `0.0`, `10.0`    |
+|                     | `goal.gain`                            | Linear gain toward the goal. Clamped to non-negative values.                                         | `1000.0`         |
 |                     | `lidar_topic`                          | Optional LaserScan topic override; if unset, `<namespace>/scan` is used.                             | derived          |
 |                     | `odom_topic`                           | Optional Odometry topic override; if unset, `<namespace>/odom` is used.                              | derived          |
+
+* The default interaction range is scaled automatically from the base ratio (`1.8 × target_distance`), so with `target_distance = 0.75` m it resolves to ~1.35 m.
 
 ## Running the Simulation
 
@@ -97,12 +99,4 @@ The script instantiates one controller node per robot namespace defined in `conf
   ros2 topic echo /robot_1/odom
   ```
 
-## Extending
 
-- To experiment with different flocking potentials, modify `turtlebot_flocking/src/flocking.cpp` inside `FlockingController::lidarFlockingVector()`.
-- Additional sensing modalities (e.g., shared poses) can be fused by adding new vector terms prior to `setWheelSpeedsFromVector`.
-- To deploy on physical TurtleBots, replace the ARGoS bridge topics with real `sensor_msgs/msg/LaserScan` data (after converting to the `LidarList` structure or adapting the controller).
-
-## License
-
-Add your chosen license text to `package.xml` and include a LICENSE file at the package root to remove the ament warnings during builds.
