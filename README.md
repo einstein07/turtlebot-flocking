@@ -6,7 +6,7 @@
 
 Key features:
 - LiDAR-only neighbour perception, using a configurable interaction range.
-- Goal attraction that guides the flock toward a global target.
+- Custom pose feed via `argos3_ros2_bridge/msg/Position` for goal attraction.
 - Differential-drive wheel speed calculation compatible with TurtleBot3 kinematics.
 - Launch scripts for ARGoS simulation plus ROS 2 controller deployment.
 
@@ -42,6 +42,15 @@ float32 value    # measured range (metres)
 
 The controller interprets each `Lidar` element as a polar coordinate pair `(angle, value)` to build the Lennard–Jones interaction vector. Ensure the `argos3_ros2_bridge` package is built and sourced so these interfaces are available.
 
+### `argos3_ros2_bridge/msg/Position`
+
+```text
+geometry_msgs/Vector3 position   # metres in the ARGoS world frame
+geometry_msgs/Quaternion orientation
+```
+
+Each controller instance subscribes to a `Position` stream that conveys the TurtleBot’s pose in the global frame. The message is converted into planar position/yaw for the goal attraction term.
+
 ## Building
 
 ```bash
@@ -72,7 +81,7 @@ Parameters can be supplied via YAML (see `config/config.yaml`) or set on the nod
 |                     | `goal.x`, `goal.y` (m)                 | Target point in the world frame.                                                                     | `0.0`, `0.0`     |
 |                     | `goal.gain`                            | Linear gain toward the goal. Clamped to non-negative values.                                         | `1.0`            |
 |                     | `lidar_topic`                          | Topic name for `argos3_ros2_bridge/msg/LidarList`. Defaults to `<namespace>/lidarList`.              | derived          |
-|                     | `odom_topic`                           | Topic name for `nav_msgs/msg/Odometry`. Defaults to `<namespace>/odom`.                              | derived          |
+|                     | `position_topic`                       | Topic name for `argos3_ros2_bridge/msg/Position`. Defaults to `<namespace>/position`.                | derived          |
 
 ## Running the Simulation
 
@@ -88,7 +97,7 @@ Parameters can be supplied via YAML (see `config/config.yaml`) or set on the nod
    ./launch-controllers.sh
    ```
 
-   The script instantiates one controller node per robot namespace defined in `config/config.yaml`, remapping LiDAR and odometry topics accordingly.
+The script instantiates one controller node per robot namespace defined in `config/config.yaml`, remapping LiDAR and position topics accordingly.
 
 3. Observe the flock behaviour in the ARGoS visualiser or inspect ROS 2 topics (`ros2 topic list`, `ros2 topic echo /robot_1/cmd_vel`, etc.).
 
@@ -106,6 +115,10 @@ Parameters can be supplied via YAML (see `config/config.yaml`) or set on the nod
   ```bash
   ros2 topic echo /robot_1/cmd_vel
   ```
+- Inspect position feed:
+  ```bash
+  ros2 topic echo /robot_1/position
+  ```
 
 ## Extending
 
@@ -116,4 +129,3 @@ Parameters can be supplied via YAML (see `config/config.yaml`) or set on the nod
 ## License
 
 Add your chosen license text to `package.xml` and include a LICENSE file at the package root to remove the ament warnings during builds.
-
