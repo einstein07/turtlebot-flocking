@@ -143,6 +143,9 @@ FlockingController::FlockingController(std::shared_ptr<rclcpp::Node> node)
   std::string clock_topic = topic_with_namespace("/argos3_clock");
   node_->declare_parameter("clock_topic", clock_topic);
   node_->get_parameter("clock_topic", clock_topic);
+  if (clock_topic.empty()) {
+    clock_topic = topic_with_namespace("/argos3_clock");
+  }
 
   wheel_params_.load_from_parameters(node_);
   flocking_params_.load_from_parameters(node_);
@@ -172,6 +175,12 @@ FlockingController::FlockingController(std::shared_ptr<rclcpp::Node> node)
   std::string odom_topic = default_odom_topic;
   node_->get_parameter("lidar_topic", lidar_topic);
   node_->get_parameter("odom_topic", odom_topic);
+  if (lidar_topic.empty()) {
+    lidar_topic = default_lidar_topic;
+  }
+  if (odom_topic.empty()) {
+    odom_topic = default_odom_topic;
+  }
 
   // Legacy ARGoS-specific LiDAR subscription retained for reference:
   // lidar_sub_ = node_->create_subscription<argos3_ros2_bridge::msg::LidarList>(
@@ -403,7 +412,7 @@ void FlockingController::setWheelSpeedsFromVector(const Vector2 & heading) {
 
 std::string FlockingController::topic_with_namespace(const std::string &suffix) const {
   if (robot_ns_.empty()) {
-    return suffix.empty() ? std::string() : suffix;
+    return suffix;
   }
   if (suffix.empty()) {
     return robot_ns_;
