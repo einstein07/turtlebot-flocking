@@ -5,6 +5,7 @@
  */
 #ifndef TURTLEBOT_FLOCKING_FLOCKING_H_
 #define TURTLEBOT_FLOCKING_FLOCKING_H_
+#include <chrono>
 #include <cmath>
 #include <string>
 #include <vector>
@@ -12,6 +13,7 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
+#include <rosgraph_msgs/msg/clock.hpp>
 // #include "argos3_ros2_bridge/msg/lidar_list.hpp"
 
 namespace turtlebot_flocking
@@ -101,14 +103,19 @@ public:
 
 private:
   std::shared_ptr<rclcpp::Node> node_;
-  std::string ns_;
+  std::string robot_ns_;
   bool initialized_;
   bool have_pose_;
+  bool sync_with_clock_;
+  std::chrono::milliseconds control_period_;
 
   // Timer callback for the control loop.
   void timer_callback();
+  void clock_callback(const rosgraph_msgs::msg::Clock::SharedPtr msg);
+  void perform_control_step();
   void lidar_sensor_callback(const sensor_msgs::msg::LaserScan & msg);
   void odom_callback(const nav_msgs::msg::Odometry & msg);
+  std::string topic_with_namespace(const std::string &suffix) const;
 
   Vector2 vectorToGoal() const;
   Vector2 lidarFlockingVector() const;
@@ -117,6 +124,7 @@ private:
   // Subscribers and publisher.
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+  rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_sub_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 
@@ -134,6 +142,7 @@ private:
   double wheel_separation_; // Distance between wheels for kinematics.
   double wheel_radius_;		// Wheel radius
   bool printed_;
+  rclcpp::Time last_clock_time_;
 
 };
 

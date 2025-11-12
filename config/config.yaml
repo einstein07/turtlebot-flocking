@@ -9,6 +9,13 @@ flocking:
       target_distance: 0.75                # preferred distance between robots
       gain: 1000.0                         # gain for the Lennard-Jones potential
       exponent: 2.0                        # exponent for the Lennard-Jones potential
+    use_sim_time: true
+    robot_namespace: ""
+    sync_with_argos_clock: true
+    control_period_ms: 20
+    clock_topic: ""
+    lidar_topic: ""
+    odom_topic: ""
     wheel_separation: 0.160                 # distance between wheels for differential drive kinematics
     wheel_radius: 0.033                     # radius of the wheels
     goal.x: 0.0                             # goal position x-coordinate in metres

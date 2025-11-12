@@ -4,12 +4,19 @@
   <!-- ************************* -->
   <!-- * General configuration * -->
   <!-- ************************* -->
-  <framework>
-    <system threads="0" />
-    <experiment length="600"
-                ticks_per_second="10"
-                random_seed="124" />
-  </framework>
+<framework>
+  <system threads="0" />
+  <experiment length="600"
+              ticks_per_second="10"
+              random_seed="124" />
+</framework>
+
+  <loop_functions library="libargos_ros_bridge.so"
+                  label="sync_metrics_loop_functions"
+                  output="sync_metrics_turtlebot.csv"
+                  enabled="true"
+                  write_header="true"
+                  flush_interval="100" />
 
   <!-- *************** -->
   <!-- * Controllers * -->
@@ -26,7 +33,14 @@
         <turtlebot3_lidar implementation="default" num_readings="360" show_rays="false" />
         <positioning implementation="default" />
       </sensors>
-      <params multiple_domains="true" nodes_per_domain="50" ros_domain_id="0" half_baseline="0.08" wheel_radius="0.033" />
+      <params multiple_domains="true"
+              nodes_per_domain="50"
+              ros_domain_id="0"
+              half_baseline="0.08"
+              wheel_radius="0.033"
+              lockstep_control="true"
+              enable_time_synchronization="true"
+              command_timeout_ms="100" />
     </argos_ros_bot_controller>
 
   </controllers>

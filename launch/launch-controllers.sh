@@ -9,7 +9,7 @@
 n=20
 
 LAUNCH_FILE=/tmp/argos_interface.launch.py
-CONTROLLER_DIR=/home/sindiso/ros2_dev/src/turtlebot_flocking
+CONTROLLER_DIR=/home/sindiso/ants/src/turtlebot_flocking
 
 
 echo "import os" > $LAUNCH_FILE
@@ -22,7 +22,7 @@ echo -e "from launch_ros.actions import Node" >> $LAUNCH_FILE
 echo -e "from ament_index_python.packages import get_package_share_directory" >> $LAUNCH_FILE
 
 echo -e "def generate_launch_description():" >> $LAUNCH_FILE
-echo -e "\tconfig_dir = os.path.join('/home/sindiso/ros2_dev/src/turtlebot_flocking', 'config')" >> $LAUNCH_FILE
+echo -e "\tconfig_dir = os.path.join('/home/sindiso/ants/src/turtlebot_flocking', 'config')" >> $LAUNCH_FILE
 echo -e "\tparam_config = os.path.join(config_dir, \"config.yaml\")" >> $LAUNCH_FILE
 echo -e "\twith open(param_config, 'r') as f:" >> $LAUNCH_FILE
 echo -e "\t\tparams = yaml.safe_load(f)[\"flocking\"][\"ros__parameters\"]" >> $LAUNCH_FILE

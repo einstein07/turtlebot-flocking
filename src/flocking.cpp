@@ -107,15 +107,43 @@ Vector2 rotateWorldToBase(const Vector2 & world_vec, double yaw) {
 
 FlockingController::FlockingController(std::shared_ptr<rclcpp::Node> node)
 : node_(std::move(node)),
-  ns_(node_->get_namespace()),
+  robot_ns_(node_->get_namespace()),
   initialized_(false),
   have_pose_(false),
+  sync_with_clock_(false),
+  control_period_(20ms),
   goal_position_(0.0,10.0),
   goal_gain_(1000.0),
   wheel_separation_(0.160),
   wheel_radius_(0.033),
-  printed_(false)
+  printed_(false),
+  last_clock_time_(0, 0, RCL_ROS_TIME)
 {
+  if (robot_ns_ == "/") {
+    robot_ns_.clear();
+  }
+  std::string robot_namespace_param = robot_ns_;
+  node_->declare_parameter("robot_namespace", robot_namespace_param);
+  node_->get_parameter("robot_namespace", robot_namespace_param);
+  if (!robot_namespace_param.empty()) {
+    robot_ns_ = robot_namespace_param;
+  }
+  if (!robot_ns_.empty() && robot_ns_.front() != '/') {
+    robot_ns_.insert(robot_ns_.begin(), '/');
+  }
+
+  node_->declare_parameter("sync_with_argos_clock", sync_with_clock_);
+  node_->get_parameter("sync_with_argos_clock", sync_with_clock_);
+  int control_period_ms = static_cast<int>(control_period_.count());
+  node_->declare_parameter("control_period_ms", control_period_ms);
+  node_->get_parameter("control_period_ms", control_period_ms);
+  control_period_ms = std::max(control_period_ms, 1);
+  control_period_ = std::chrono::milliseconds(control_period_ms);
+
+  std::string clock_topic = topic_with_namespace("/argos3_clock");
+  node_->declare_parameter("clock_topic", clock_topic);
+  node_->get_parameter("clock_topic", clock_topic);
+
   wheel_params_.load_from_parameters(node_);
   flocking_params_.load_from_parameters(node_);
 
@@ -135,13 +163,8 @@ FlockingController::FlockingController(std::shared_ptr<rclcpp::Node> node)
   goal_position_ = Vector2(goal_x, goal_y);
   goal_gain_ = std::max(goal_gain_, 0.0);
 
-  std::string ns_prefix = ns_;
-  if (ns_prefix == "/") {
-    ns_prefix.clear();
-  }
-
-  std::string default_lidar_topic = ns_prefix + "/scan";
-  std::string default_odom_topic = ns_prefix + "/odom";
+  std::string default_lidar_topic = topic_with_namespace("/scan");
+  std::string default_odom_topic = topic_with_namespace("/odom");
   node_->declare_parameter("lidar_topic", default_lidar_topic);
   node_->declare_parameter("odom_topic", default_odom_topic);
 
@@ -166,9 +189,16 @@ FlockingController::FlockingController(std::shared_ptr<rclcpp::Node> node)
     rclcpp::SystemDefaultsQoS(),
     std::bind(&FlockingController::odom_callback, this, _1));
 
-  cmd_pub_ = node_->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
+  cmd_pub_ = node_->create_publisher<geometry_msgs::msg::Twist>(topic_with_namespace("/cmd_vel"), 10);
 
-  timer_ = node_->create_wall_timer(20ms, std::bind(&FlockingController::timer_callback, this));
+  if (sync_with_clock_) {
+    clock_sub_ = node_->create_subscription<rosgraph_msgs::msg::Clock>(
+      clock_topic,
+      rclcpp::QoS(rclcpp::KeepLast(10)).best_effort(),
+      std::bind(&FlockingController::clock_callback, this, _1));
+  } else {
+    timer_ = node_->create_wall_timer(control_period_, std::bind(&FlockingController::timer_callback, this));
+  }
 }
 
 /****************************************/
@@ -195,6 +225,21 @@ void FlockingController::odom_callback(const nav_msgs::msg::Odometry & msg) {
 /****************************************/
 
 void FlockingController::timer_callback() {
+  perform_control_step();
+}
+
+void FlockingController::clock_callback(const rosgraph_msgs::msg::Clock::SharedPtr msg) {
+  if (!msg) {
+    return;
+  }
+  if (msg->clock == last_clock_time_) {
+    return;
+  }
+  last_clock_time_ = msg->clock;
+  perform_control_step();
+}
+
+void FlockingController::perform_control_step() {
   if (!printed_) {
     auto domain_id = node_->get_node_base_interface()->get_context()->get_domain_id();
     RCLCPP_INFO(node_->get_logger(), "Controller running on ROS_DOMAIN_ID: %zu", domain_id);
@@ -202,7 +247,6 @@ void FlockingController::timer_callback() {
   }
 
   if (!initialized_ || !have_pose_) {
-    // print deubugging info
     RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000, "Waiting for initialization...");
     return;
   }
@@ -355,6 +399,19 @@ void FlockingController::setWheelSpeedsFromVector(const Vector2 & heading) {
   // print out the wheel speeds for debugging
   RCLCPP_DEBUG(node_->get_logger(), "Left wheel speed: %.2f, Right wheel speed: %.2f", left_speed, right_speed);
   cmd_pub_->publish(twist);
+}
+
+std::string FlockingController::topic_with_namespace(const std::string &suffix) const {
+  if (robot_ns_.empty()) {
+    return suffix.empty() ? std::string() : suffix;
+  }
+  if (suffix.empty()) {
+    return robot_ns_;
+  }
+  if (!suffix.empty() && suffix.front() == '/') {
+    return robot_ns_ + suffix;
+  }
+  return robot_ns_ + '/' + suffix;
 }
 
 }  // namespace turtlebot_flocking

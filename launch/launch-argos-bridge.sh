@@ -12,8 +12,8 @@ LAUNCH_FILE=/tmp/argos_interface.launch.py
 ARGOS_CONFIG_DIR=./flocking.argos
 
 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/argos3:/home/sindiso/ros2_dev/install/argos3_ros2_bridge/lib
-export ARGOS_PLUGIN_PATH=/home/sindiso/ros2_dev/install/argos3_ros2_bridge/lib/
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/argos3:/home/sindiso/ants/install/argos3_ros2_bridge/lib
+export ARGOS_PLUGIN_PATH=/home/sindiso/ants/install/argos3_ros2_bridge/lib/
 
 export ROS_LOCALHOST_ONLY=0
 
