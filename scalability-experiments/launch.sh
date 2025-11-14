@@ -4,13 +4,13 @@ set -euo pipefail
 
 ROS_WS="${ROS_WS:-$HOME/ros2_ws}"
 CONFIG_SET="${1:-no-threads}"
-SCALABILITY_DIR="$ROS_WS/src/turtlebot-flocking/sclability-experiments/${CONFIG_SET}"
+SCALABILITY_DIR="$ROS_WS/src/turtlebot-flocking/scalability-experiments/${CONFIG_SET}"
 if [[ ! -d "$SCALABILITY_DIR" ]]; then
   echo "[ERROR] Config directory $SCALABILITY_DIR not found."
   exit 1
 fi
 CONFIG_YAML="$ROS_WS/src/turtlebot-flocking/config/config.yaml"
-COUNTS=(10 20 40 80 160 320 640 1280)
+COUNTS=(40 80 160 320 640 1280)
 REPETITIONS=10
 NODES_PER_DOMAIN=50
 ARGOS_BIN="${ARGOS_BIN:-argos3}"
@@ -22,6 +22,7 @@ SHUTDOWN_GRACE_SECONDS=5
 SAMPLE_INTERVAL=1
 NUM_CORES=$(nproc --all)
 RESULTS_FILE="$LOG_ROOT/summary.csv"
+ROS_STARTUP_DELAY="${ROS_STARTUP_DELAY:-5}"
 
 mkdir -p "$LOG_ROOT"
 echo "Robots,Repetition,WallTime(s),CPU(%),MaxMem(kB),ArgosCPU(%),Ros2CPU(%),ArgosMem(kB),Ros2Mem(kB)" > "$RESULTS_FILE"
@@ -38,6 +39,10 @@ trap cleanup INT TERM EXIT
 reset_ros_environment() {
   pkill -f "ros2 launch" 2>/dev/null || true
   pkill -f "turtlebot_flocking" 2>/dev/null || true
+  pkill -f "argos3" 2>/dev/null || true
+  sleep 1
+  pkill -9 -f "turtlebot_flocking" 2>/dev/null || true
+  pkill -9 -f "argos3" 2>/dev/null || true
   ros2 daemon stop >/dev/null 2>&1 || true
   ros2 daemon start >/dev/null 2>&1 || true
 }
@@ -104,7 +109,7 @@ run_trial() {
 
   ( /usr/bin/time -f "%e %P %M" -o "$ros2_time_file" ros2 launch "$launch_file" ) > "$ros2_log" 2>&1 &
   local ros2_pid=$!
-  sleep 5
+  sleep "$ROS_STARTUP_DELAY"
 
   /usr/bin/time -f "%e %P %M" -o "$argos_time_file" $ARGOS_BIN -c "$config_file" -z > "$argos_log" 2>&1 &
   local argos_pid=$!
@@ -148,7 +153,10 @@ run_trial() {
     sleep $SAMPLE_INTERVAL
   done
 
-  wait $argos_pid 2>/dev/null || true
+  local argos_status=0
+  if ! wait $argos_pid 2>/dev/null; then
+    argos_status=$?
+  fi
 
   if kill -0 $ros2_pid 2>/dev/null; then
     kill -INT $ros2_pid 2>/dev/null || true
@@ -164,7 +172,33 @@ run_trial() {
       waited=$((waited + 1))
     done
   fi
-  wait $ros2_pid 2>/dev/null || true
+  local ros2_status=0
+  if ! wait $ros2_pid 2>/dev/null; then
+    ros2_status=$?
+  fi
+
+  # Force kill any remaining controllers/argos processes before continuing
+  pkill -f "turtlebot_flocking" 2>/dev/null || true
+  pkill -f "$ARGOS_BIN" 2>/dev/null || true
+  sleep 1
+  pkill -9 -f "turtlebot_flocking" 2>/dev/null || true
+  pkill -9 -f "$ARGOS_BIN" 2>/dev/null || true
+  while pgrep -f "turtlebot_flocking" >/dev/null; do sleep 1; done
+  while pgrep -f "$ARGOS_BIN" >/dev/null; do sleep 1; done
+
+  local run_failed=false
+  local failure_reason=""
+  if [[ $argos_status -ne 0 ]]; then
+    run_failed=true
+    failure_reason="argos exit $argos_status"
+  fi
+  if [[ $ros2_status -ne 0 ]]; then
+    run_failed=true
+    if [[ -n "$failure_reason" ]]; then
+      failure_reason+="; "
+    fi
+    failure_reason+="ros2 exit $ros2_status"
+  fi
 
   local argos_wall=0 argos_cpu=0 argos_mem=0
   if [[ -f "$argos_time_file" ]]; then
@@ -200,6 +234,10 @@ run_trial() {
 
   local total_cpu=$(printf "%.2f" $(echo "${argos_cpu:-0} + ${ros2_cpu:-0}" | bc -l))
   local total_mem=$(printf "%.0f" $(echo "${argos_mem:-0} + ${ros2_mem:-0}" | bc -l))
+
+  if [[ $run_failed == true ]]; then
+    echo "[WARN] Run failed for ${count} robots repetition ${rep}: ${failure_reason}" | tee -a "$run_dir/notes.txt"
+  fi
 
   local result_line="$count,$rep,$wall_time,$total_cpu,$total_mem,${argos_cpu:-0},${ros2_cpu:-0},${argos_mem:-0},${ros2_mem:-0}"
   echo "$result_line" >> "$RESULTS_FILE"
